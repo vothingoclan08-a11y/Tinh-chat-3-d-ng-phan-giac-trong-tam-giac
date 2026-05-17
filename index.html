@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khám Phá Toán Học: 3 Đường Phân Giác (Chuẩn SGK)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MathJax -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Canvas Confetti cho hiệu ứng Pháo hoa -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e1b4b);
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .station {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .station.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        /* Hiệu ứng rung lắc khi trả lời sai */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake-error {
+            animation: shake 0.5s;
+            border-color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        .btn-game {
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-game:hover {
+            background: linear-gradient(to right, #2563eb, #7c3aed);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 10px 20px -10px rgba(139, 92, 246, 0.8);
+        }
+        .btn-disabled {
+            background: #475569 !important;
+            color: #94a3b8 !important;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Level 1 Quiz Styles */
+        .quiz-option {
+            transition: all 0.2s;
+            border: 2px solid #334155;
+        }
+        .quiz-option:hover {
+            border-color: #60a5fa;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Select Dropdown styling Level 2 */
+        .select-math {
+            background-color: #1e293b;
+            color: #60a5fa;
+            border: 1px solid #475569;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .select-math:focus, .select-math:hover {
+            border-color: #8b5cf6;
+        }
+        .select-math.correct {
+            border-color: #10b981;
+            color: #34d399;
+        }
+
+        /* Canvas Level 3 */
+        canvas {
+            touch-action: none;
+            background-color: #f8fafc;
+            border-radius: 1rem;
+            box-shadow: inset 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col items-center py-6 px-4 sm:px-8">
+
+    <header class="w-full max-w-4xl text-center mb-8 relative z-10">
+        <div class="inline-block px-4 py-1 rounded-full bg-blue-500/20 text-blue-300 font-semibold text-sm mb-3 border border-blue-500/30">
+            <i class="fa-solid fa-gamepad mr-2"></i>Toán 7 - Hình Học Trực Quan
+        </div>
+        <h1 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 mb-2">
+            Hành Trình Tam Giác
+        </h1>
+        <p class="text-lg text-slate-400 font-medium">Bí Ẩn 3 Đường Phân Giác</p>
+        
+        <!-- Progress Bar -->
+        <div class="flex justify-between items-center mt-8 max-w-lg mx-auto relative px-4">
+            <div class="absolute left-4 right-4 top-1/2 transform -translate-y-1/2 h-1 bg-slate-700 z-0 rounded-full"></div>
+            <div id="progress-line" class="absolute left-4 top-1/2 transform -translate-y-1/2 h-1 bg-gradient-to-r from-blue-400 to-emerald-400 z-0 transition-all duration-700 rounded-full" style="width: 0%;"></div>
+            
+            <div id="nav-1" class="z-10 w-12 h-12 rounded-full flex items-center justify-center bg-blue-500 text-white font-bold text-lg shadow-[0_0_15px_rgba(59,130,246,0.6)]"><i class="fa-solid fa-bolt"></i></div>
+            <div id="nav-2" class="z-10 w-12 h-12 rounded-full flex items-center justify-center bg-slate-700 text-slate-400 font-bold text-lg transition-all duration-500"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <div id="nav-3" class="z-10 w-12 h-12 rounded-full flex items-center justify-center bg-slate-700 text-slate-400 font-bold text-lg transition-all duration-500"><i class="fa-solid fa-map-location-dot"></i></div>
+        </div>
+    </header>
+
+    <main class="w-full max-w-4xl glass-panel rounded-3xl p-6 md:p-8 relative z-10">
+
+        <section id="station-1" class="station active">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-slate-600/50 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 text-2xl">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-blue-300">Level 1: Phản Xạ Nhanh</h2>
+                        <p class="text-sm text-slate-400">Ôn tập 4 đường đặc biệt trong tam giác</p>
+                    </div>
+                </div>
+                
+                <!-- HUD: Score & Timer -->
+                <div class="flex gap-4">
+                    <div class="bg-slate-800 border border-slate-600 px-4 py-2 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-star text-yellow-400"></i>
+                        <span class="font-bold text-lg" id="ui-score">0</span> Điểm
+                    </div>
+                    <div id="timer-box" class="bg-slate-800 border border-slate-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                        <i class="fa-solid fa-clock text-rose-400"></i>
+                        <span class="font-bold text-lg font-mono" id="ui-timer">60</span>s
+                    </div>
+                </div>
+            </div>
+
+            <!-- Màn hình Intro Level 1 -->
+            <div id="l1-intro" class="text-center py-10">
+                <i class="fa-solid fa-stopwatch text-6xl text-blue-400 mb-4 animate-pulse"></i>
+                <h3 class="text-2xl font-bold text-white mb-2">Sẵn sàng chưa?</h3>
+                <p class="text-slate-300 mb-6">Bạn có 60 giây để trả lời 7 câu hỏi. <br>Đúng <strong class="text-emerald-400">+10đ</strong>, Sai <strong class="text-rose-400">-5đ</strong>.</p>
+                <button onclick="startLevel1()" class="btn-game text-white font-bold py-3 px-8 rounded-xl shadow-lg text-lg">
+                    Bắt đầu ngay <i class="fa-solid fa-play ml-2"></i>
+                </button>
+            </div>
+
+            <!-- Khu vực câu hỏi Level 1 -->
+            <div id="l1-quiz-area" class="hidden">
+                <div class="mb-4 text-blue-400 font-semibold" id="q-counter">Câu 1/7</div>
+                <div class="bg-slate-800/80 p-6 rounded-2xl border border-slate-600 mb-6 shadow-inner" id="question-card">
+                    <h3 class="text-xl font-bold text-white mb-6 leading-relaxed" id="q-text">Đang tải câu hỏi...</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="options-container">
+                        <!-- Options injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end hidden" id="l1-next-container">
+                <button id="btn-next-1" class="btn-game text-white font-bold py-3 px-8 rounded-xl shadow-lg" onclick="goToStation(2)">
+                    Tới Level 2 <i class="fa-solid fa-forward-step ml-2"></i>
+                </button>
+            </div>
+        </section>
+
+        <section id="station-2" class="station">
+            <div class="flex items-center gap-3 mb-6 border-b border-slate-600/50 pb-4">
+                <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 text-2xl">
+                    <i class="fa-solid fa-fingerprint"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-purple-300">Level 2: Khám Phá Định Lí</h2>
+                    <p class="text-sm text-slate-400">Định lí 3 đường phân giác (SGK Toán 7)</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/80 p-6 md:p-8 rounded-2xl mb-6 text-base md:text-lg leading-relaxed border border-purple-500/30 shadow-inner">
+                
+                <div class="flex flex-col md:flex-row gap-8 items-center mb-6">
+                    <!-- Clearer SVG Graphic -->
+                    <div class="relative w-64 md:w-80 flex-shrink-0 bg-slate-900 rounded-xl p-4 border border-slate-700">
+                        <svg viewBox="0 0 120 110" class="w-full h-full drop-shadow-[0_0_10px_rgba(168,85,247,0.3)] font-sans">
+                            <!-- Tam giác -->
+                            <polygon points="60,15 10,95 110,95" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linejoin="round"/>
+                            
+                            <!-- Đường tròn nội tiếp (Incircle) tính toán chính xác -->
+                            <circle cx="60" cy="67.3" r="27.7" fill="rgba(236, 72, 153, 0.05)" stroke="#f472b6" stroke-width="0.8" stroke-dasharray="3,3"/>
+                            
+                            <!-- Các đường phân giác -->
+                            <line x1="60" y1="15" x2="60" y2="95" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2"/>
+                            <line x1="10" y1="95" x2="84.3" y2="53.8" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2"/>
+                            <line x1="110" y1="95" x2="35.7" y2="53.8" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2"/>
+                            
+                            <!-- Giao điểm I -->
+                            <circle cx="60" cy="67.3" r="2" fill="#38bdf8"/>
+                            
+                            <!-- Các đường vuông góc từ I (khoảng cách) -->
+                            <line x1="60" y1="67.3" x2="60" y2="95" stroke="#7dd3fc" stroke-width="1.2"/>
+                            <line x1="60" y1="67.3" x2="36.5" y2="52.6" stroke="#7dd3fc" stroke-width="1.2"/>
+                            <line x1="60" y1="67.3" x2="83.5" y2="52.6" stroke="#7dd3fc" stroke-width="1.2"/>
+
+                            <!-- Ký hiệu góc vuông (Đã chỉnh lại góc độ tiếp tuyến) -->
+                            <!-- Tại đáy BC (H) -->
+                            <polyline points="60,91 64,91 64,95" fill="none" stroke="#94a3b8" stroke-width="0.8"/>
+                            <!-- Tại cạnh AB (K) -->
+                            <polygon points="36.5,52.6 38.6,49.2 42,51.3 39.9,54.7" fill="none" stroke="#94a3b8" stroke-width="0.8"/>
+                            <!-- Tại cạnh AC (L) -->
+                            <polygon points="83.5,52.6 81.4,49.2 78,51.3 80.1,54.7" fill="none" stroke="#94a3b8" stroke-width="0.8"/>
+
+                            <!-- Nhãn Điểm -->
+                            <text x="56" y="10" fill="#f8fafc" font-size="8" font-family="sans-serif">A</text>
+                            <text x="2" y="100" fill="#f8fafc" font-size="8" font-family="sans-serif">B</text>
+                            <text x="112" y="100" fill="#f8fafc" font-size="8" font-family="sans-serif">C</text>
+                            <text x="63" y="66" fill="#38bdf8" font-size="8" font-family="sans-serif">I</text>
+                            <text x="62" y="102" fill="#cbd5e1" font-size="6" font-family="sans-serif">H</text>
+                            <text x="28" y="50" fill="#cbd5e1" font-size="6" font-family="sans-serif">K</text>
+                            <text x="89" y="50" fill="#cbd5e1" font-size="6" font-family="sans-serif">L</text>
+                        </svg>
+                        <p class="text-center text-xs text-slate-400 mt-2">I là giao điểm 3 đường phân giác</p>
+                    </div>
+
+                    <div class="flex-1 space-y-5 bg-slate-900/50 p-5 rounded-xl border border-slate-700 w-full">
+                        <p class="text-purple-300 font-bold mb-2">Theo Định lí SGK, ta có:</p>
+                        <p class="flex flex-wrap items-center gap-2">
+                            <span>1. Ba đường phân giác của một tam giác cùng đi qua</span>
+                            <select id="l2-q1" class="select-math">
+                                <option value="">-- Chọn --</option>
+                                <option value="motdiem">một điểm</option>
+                                <option value="haidiem">hai điểm</option>
+                                <option value="tamgiac">trung điểm</option>
+                            </select>
+                        </p>
+
+                        <p class="flex flex-wrap items-center gap-2">
+                            <span>2. Giao điểm này có tính chất luôn</span>
+                            <select id="l2-q2" class="select-math">
+                                <option value="">-- Chọn --</option>
+                                <option value="cachdeu3dinh">cách đều 3 đỉnh</option>
+                                <option value="cachdeu3canh">cách đều 3 cạnh</option>
+                                <option value="namtrencanh">cách đều 2 cạnh đáy</option>
+                            </select>
+                            <span>của tam giác.</span>
+                        </p>
+
+                        <p class="flex flex-wrap items-center gap-2">
+                            <span>3. Kẻ \(IH \perp BC, IK \perp AB, IL \perp AC\). Ta có:</span>
+                            <select id="l2-q3" class="select-math">
+                                <option value="">-- Chọn --</option>
+                                <option value="ih>ik>il">\(IH > IK > IL\)</option>
+                                <option value="ih=ik=il">\(IH = IK = IL\)</option>
+                                <option value="ih+ik=il">\(IH + IK = IL\)</option>
+                            </select>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="goToStation(1)" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-xl transition-colors">
+                    <i class="fa-solid fa-backward-step mr-2"></i> Quay lại
+                </button>
+                <button id="btn-next-2" class="btn-game text-white font-bold py-3 px-8 rounded-xl shadow-lg" onclick="checkLevel2()">
+                    Kiểm tra & Đi tiếp <i class="fa-solid fa-forward-step ml-2"></i>
+                </button>
+            </div>
+        </section>
+
+        <section id="station-3" class="station">
+            <div class="flex items-center gap-3 mb-6 border-b border-slate-600/50 pb-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-2xl">
+                    <i class="fa-solid fa-tractor"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-emerald-300">Level 3: Vận Dụng Thực Tế</h2>
+                    <p class="text-sm text-slate-400">Giúp bác nông dân xác định vị trí</p>
+                </div>
+            </div>
+
+            <div class="mb-6 bg-slate-800/50 p-4 rounded-xl border border-emerald-500/30 text-slate-200">
+                <p class="mb-2"><i class="fa-solid fa-quote-left text-emerald-500 mr-2 opacity-50"></i><em>Một nông trại nằm trên mảnh đất hình tam giác có 3 cạnh tường rào tiếp giáp với 3 con đường. Hỏi phải đặt <strong>Trạm quan sát</strong> ở đâu để nó <strong>cách đều 3 con đường</strong>?</em></p>
+                <p class="text-sm text-emerald-300 mt-4"><i class="fa-solid fa-crosshairs animate-spin mr-1"></i> <strong>Thao tác:</strong> Click chuột vào vị trí đúng trên bản đồ để xây trạm!</p>
+            </div>
+
+            <div class="relative w-full flex justify-center mb-8">
+                <canvas id="farm-canvas" width="450" height="380"></canvas>
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="goToStation(2)" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-xl transition-colors">
+                    <i class="fa-solid fa-backward-step mr-2"></i> Quay lại
+                </button>
+                <button id="btn-finish" class="btn-game btn-disabled text-white font-bold py-3 px-8 rounded-xl shadow-lg" disabled>
+                    Nhận Cúp <i class="fa-solid fa-trophy ml-2"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Màn hình Chiến Thắng -->
+        <section id="victory-screen" class="station text-center py-12">
+            <div class="relative inline-block mb-6">
+                <div class="absolute inset-0 bg-yellow-400 blur-3xl opacity-30 rounded-full animate-pulse"></div>
+                <i class="fa-solid fa-trophy text-8xl text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,1)] relative z-10"></i>
+            </div>
+            <h2 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-600 mb-4">TOÀN THẮNG!</h2>
+            <p class="text-lg md:text-xl text-slate-300 mb-2">Tổng điểm phản xạ: <span id="final-score" class="text-yellow-400 font-bold text-2xl"></span></p>
+            <p class="text-base text-slate-400 mb-8 max-w-md mx-auto">Bạn đã hoàn thành xuất sắc giáo án Toán 7 - Tính chất 3 đường phân giác của tam giác.</p>
+            
+            <button onclick="location.reload()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-10 rounded-full transition-all hover:scale-105 border border-slate-500">
+                <i class="fa-solid fa-rotate-right mr-2"></i> Chơi lại từ đầu
+            </button>
+        </section>
+
+    </main>
+
+    <!-- Modal dùng chung -->
+    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-slate-800 border border-slate-600 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_40px_rgba(0,0,0,0.5)] transform scale-90 transition-transform duration-300 text-center" id="modal-content">
+            <div id="modal-icon" class="text-6xl mb-5"></div>
+            <h3 id="modal-title" class="text-2xl font-black text-white mb-3"></h3>
+            <p id="modal-desc" class="text-slate-300 mb-8 leading-relaxed"></p>
+            <button onclick="closeModal()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-lg border border-slate-500">
+                Đã hiểu
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- MODAL UTILS ---
+        const modal = document.getElementById('custom-modal');
+        const modalContent = document.getElementById('modal-content');
+
+        function showModal(type, title, desc) {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; // force reflow
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-90');
+            modalContent.classList.add('scale-100');
+
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').innerHTML = desc; 
+
+            const icon = document.getElementById('modal-icon');
+            if (type === 'success') icon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+            else if (type === 'error') icon.innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-400"></i>';
+            else icon.innerHTML = '<i class="fa-solid fa-lightbulb text-blue-400"></i>';
+        }
+
+        function closeModal() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-90');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // --- FIREWORKS ---
+        function shootFireworks() {
+            var duration = 3 * 1000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+
+            function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+            var interval = setInterval(function() {
+                var timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) return clearInterval(interval);
+                var particleCount = 50 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        // --- NAVIGATION ---
+        function updateProgressUI(level) {
+            const progressLine = document.getElementById('progress-line');
+            if(level === 1) progressLine.style.width = '0%';
+            if(level === 2) progressLine.style.width = '50%';
+            if(level === 3 || level === 4) progressLine.style.width = '100%';
+
+            const icons = ['fa-bolt', 'fa-magnifying-glass', 'fa-map-location-dot'];
+            const colors = ['bg-blue-500', 'bg-purple-500', 'bg-emerald-500'];
+
+            for (let i = 1; i <= 3; i++) {
+                const nav = document.getElementById(`nav-${i}`);
+                if (i < level || (level===4 && i<=3)) {
+                    nav.className = `z-10 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all duration-500 ${colors[i-1]}`;
+                    nav.innerHTML = '<i class="fa-solid fa-check"></i>';
+                } else if (i === level) {
+                    nav.className = `z-10 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all duration-500 ${colors[i-1]} scale-110`;
+                    nav.innerHTML = `<i class="fa-solid ${icons[i-1]}"></i>`;
+                } else {
+                    nav.className = 'z-10 w-12 h-12 rounded-full flex items-center justify-center bg-slate-700 text-slate-500 font-bold text-lg scale-90 border border-slate-600';
+                    nav.innerHTML = `<i class="fa-solid ${icons[i-1]}"></i>`;
+                }
+            }
+        }
+
+        function goToStation(levelId) {
+            document.querySelectorAll('.station').forEach(el => el.classList.remove('active'));
+            if(levelId === 4) {
+                document.getElementById('victory-screen').classList.add('active');
+                document.getElementById('final-score').innerText = l1Score;
+                shootFireworks();
+            } else {
+                document.getElementById(`station-${levelId}`).classList.add('active');
+            }
+            updateProgressUI(levelId);
+            
+            if(levelId === 2 && window.MathJax) MathJax.typesetPromise();
+            if(levelId === 3) drawFarm(); 
+        }
+
+        // --- LEVEL 1: QUIZ GAME ---
+        const l1Data = [
+            { q: "Đoạn thẳng nối một đỉnh với trung điểm cạnh đối diện gọi là gì?", options: ["Đường cao", "Đường trung tuyến", "Đường phân giác", "Đường trung trực"], ans: 1 },
+            { q: "Đoạn thẳng kẻ từ một đỉnh, vuông góc với đường thẳng chứa cạnh đối diện gọi là gì?", options: ["Đường cao", "Đường trung trực", "Đường trung tuyến", "Đường phân giác"], ans: 0 },
+            { q: "Tia xuất phát từ một đỉnh và chia góc đó thành 2 góc bằng nhau gọi là gì?", options: ["Trung tuyến", "Trung trực", "Phân giác", "Đường cao"], ans: 2 },
+            { q: "Đường thẳng vuông góc với đoạn thẳng tại trung điểm của nó gọi là gì?", options: ["Đường cao", "Đường phân giác", "Đường trung tuyến", "Đường trung trực"], ans: 3 },
+            { q: "Giao điểm của 3 đường TRUNG TUYẾN trong tam giác được gọi là gì?", options: ["Trực tâm", "Trọng tâm", "Tâm đường tròn nội tiếp", "Tâm đường tròn ngoại tiếp"], ans: 1 },
+            { q: "Trực tâm là giao điểm của 3 đường nào trong tam giác?", options: ["3 đường cao", "3 đường phân giác", "3 đường trung tuyến", "3 đường trung trực"], ans: 0 },
+            { q: "Giao điểm của 3 đường PHÂN GIÁC có tính chất gì?", options: ["Cách đều 3 đỉnh", "Nằm ngoài tam giác", "Cách đều 3 cạnh", "Chia trung tuyến theo tỉ lệ 2:1"], ans: 2 }
+        ];
+
+        let l1Index = 0;
+        let l1Score = 0;
+        let l1Time = 60;
+        let l1TimerId;
+        let l1IsActive = false;
+
+        function startLevel1() {
+            document.getElementById('l1-intro').classList.add('hidden');
+            document.getElementById('l1-quiz-area').classList.remove('hidden');
+            l1Index = 0;
+            l1Score = 0;
+            l1Time = 60;
+            l1IsActive = true;
+            updateHUD();
+            loadQuestion();
+            
+            l1TimerId = setInterval(() => {
+                if(!l1IsActive) return;
+                l1Time--;
+                if(l1Time <= 10) {
+                    document.getElementById('timer-box').classList.add('bg-rose-500/20', 'border-rose-500');
+                }
+                updateHUD();
+                if(l1Time <= 0) {
+                    endLevel1(false);
+                }
+            }, 1000);
+        }
+
+        function updateHUD() {
+            document.getElementById('ui-score').innerText = l1Score;
+            document.getElementById('ui-timer').innerText = l1Time;
+        }
+
+        function loadQuestion() {
+            if (l1Index >= l1Data.length) {
+                endLevel1(true);
+                return;
+            }
+            const data = l1Data[l1Index];
+            document.getElementById('q-counter').innerText = `Câu ${l1Index + 1}/${l1Data.length}`;
+            document.getElementById('q-text').innerText = data.q;
+            
+            const optsContainer = document.getElementById('options-container');
+            optsContainer.innerHTML = '';
+            
+            data.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "quiz-option w-full text-left px-4 py-3 rounded-xl bg-slate-700 text-slate-200 font-medium hover:text-white";
+                btn.innerText = opt;
+                btn.onclick = () => checkL1Answer(idx, btn);
+                optsContainer.appendChild(btn);
+            });
+        }
+
+        function checkL1Answer(selectedIdx, btnElement) {
+            if(!l1IsActive) return;
+            const correctIdx = l1Data[l1Index].ans;
+            
+            // Disable all buttons immediately
+            const allBtns = document.querySelectorAll('#options-container button');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (selectedIdx === correctIdx) {
+                btnElement.classList.add('bg-emerald-500/30', 'border-emerald-500', 'text-emerald-300');
+                btnElement.innerHTML += ' <i class="fa-solid fa-check float-right mt-1"></i>';
+                l1Score += 10;
+                updateHUD();
+                setTimeout(() => { l1Index++; loadQuestion(); }, 600);
+            } else {
+                btnElement.classList.add('bg-rose-500/30', 'border-rose-500', 'text-rose-300');
+                btnElement.innerHTML += ' <i class="fa-solid fa-xmark float-right mt-1"></i>';
+                
+                // Shake effect on card
+                const card = document.getElementById('question-card');
+                card.classList.add('shake-error');
+                setTimeout(() => card.classList.remove('shake-error'), 500);
+
+                l1Score -= 5;
+                updateHUD();
+                
+                // Highlight correct answer
+                allBtns[correctIdx].classList.add('border-emerald-500', 'text-emerald-400');
+                
+                setTimeout(() => { l1Index++; loadQuestion(); }, 1200);
+            }
+        }
+
+        function endLevel1(completed) {
+            l1IsActive = false;
+            clearInterval(l1TimerId);
+            document.getElementById('l1-quiz-area').classList.add('hidden');
+            
+            if (completed && l1Score > 0) {
+                showModal('success', 'Xuất sắc!', `Bạn đã vượt qua bài kiểm tra phản xạ với ${l1Score} điểm!`);
+                shootFireworks();
+                document.getElementById('l1-next-container').classList.remove('hidden');
+            } else {
+                showModal('error', 'Hết giờ / Điểm thấp', `Điểm của bạn: ${l1Score}. Bạn cần hoàn thành các câu hỏi với số điểm > 0 để đi tiếp.`);
+                document.getElementById('l1-intro').classList.remove('hidden');
+            }
+        }
+
+        // --- LEVEL 2: ĐIỀN KHUYẾT ---
+        function checkLevel2() {
+            const q1 = document.getElementById('l2-q1');
+            const q2 = document.getElementById('l2-q2');
+            const q3 = document.getElementById('l2-q3');
+            let isCorrect = true;
+
+            [q1, q2, q3].forEach(el => el.classList.remove('correct', 'border-red-500'));
+
+            if(q1.value === 'motdiem') q1.classList.add('correct'); else { isCorrect = false; q1.classList.add('border-red-500'); }
+            if(q2.value === 'cachdeu3canh') q2.classList.add('correct'); else { isCorrect = false; q2.classList.add('border-red-500'); }
+            if(q3.value === 'ih=ik=il') q3.classList.add('correct'); else { isCorrect = false; q3.classList.add('border-red-500'); }
+
+            if (isCorrect) {
+                showModal('success', 'Thuộc lòng định lí!', 'Quá chuẩn! Tâm đường tròn nội tiếp (giao điểm 3 đường phân giác) luôn <strong>cách đều 3 cạnh</strong> của tam giác.');
+                goToStation(3);
+            } else {
+                showModal('error', 'Ôn lại Định lí', 'Gợi ý: 3 đường phân giác đồng quy tại 1 điểm, và khoảng cách từ điểm đó đến 3 cạnh là bằng nhau (để vẽ đường tròn nội tiếp).');
+            }
+        }
+
+        // --- LEVEL 3: CANVAS NÔNG TRẠI ---
+        const canvas = document.getElementById('farm-canvas');
+        const ctx = canvas.getContext('2d');
+        let isLevel3Solved = false;
+        
+        let farmA = {x: 225, y: 40};
+        let farmB = {x: 50, y: 320};
+        let farmC = {x: 400, y: 320};
+
+        function dist(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        // Tính Tâm I
+        let a = dist(farmB.x, farmB.y, farmC.x, farmC.y);
+        let b = dist(farmA.x, farmA.y, farmC.x, farmC.y);
+        let c = dist(farmA.x, farmA.y, farmB.x, farmB.y);
+        let p = a + b + c;
+        let incenter = {
+            x: (a * farmA.x + b * farmB.x + c * farmC.x) / p,
+            y: (a * farmA.y + b * farmB.y + c * farmC.y) / p
+        };
+
+        function drawTree(x, y, scale = 1) {
+            ctx.save();
+            ctx.translate(x, y); ctx.scale(scale, scale);
+            ctx.fillStyle = '#78350f'; ctx.fillRect(-4, 0, 8, 15);
+            ctx.fillStyle = '#16a34a'; ctx.beginPath(); ctx.arc(0, -5, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.arc(-3, -2, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        function drawTower(x, y) {
+            ctx.save(); ctx.translate(x, y);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 5, 0, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#475569'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-5, -30); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(5, -30); ctx.stroke();
+            ctx.fillStyle = '#fde047'; ctx.fillRect(-12, -45, 24, 15);
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(-8, -42, 16, 6);
+            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(-16, -45); ctx.lineTo(0, -60); ctx.lineTo(16, -45); ctx.fill();
+            
+            // Vẽ vòng radar phát sóng
+            ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4]);
+            ctx.beginPath(); ctx.arc(0, -60, 15, Math.PI, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, -60, 25, Math.PI, Math.PI*2); ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawFarm() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#bbf7d0'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Tường rào (Đường lớn)
+            ctx.beginPath(); ctx.moveTo(farmA.x, farmA.y); ctx.lineTo(farmB.x, farmB.y); ctx.lineTo(farmC.x, farmC.y); ctx.closePath();
+            ctx.lineWidth = 24; ctx.strokeStyle = '#64748b'; ctx.lineJoin = 'round'; ctx.stroke();
+            ctx.fillStyle = '#86efac'; ctx.fill();
+
+            // Vạch kẻ đường
+            ctx.beginPath(); ctx.moveTo(farmA.x, farmA.y); ctx.lineTo(farmB.x, farmB.y); ctx.lineTo(farmC.x, farmC.y); ctx.closePath();
+            ctx.lineWidth = 2; ctx.strokeStyle = '#f8fafc'; ctx.setLineDash([12, 12]); ctx.stroke(); ctx.setLineDash([]);
+
+            // Cây cối (Đã giảm xuống 3 cây và bố trí thoáng hơn)
+            drawTree(225, 150, 1.2); drawTree(130, 240, 1.1); drawTree(320, 260, 0.95);
+
+            if(isLevel3Solved) {
+                ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(0,0, canvas.width, canvas.height);
+                
+                // Toán học: Bán kính đường tròn nội tiếp
+                let s = p / 2;
+                let area = Math.sqrt(s*(s-a)*(s-b)*(s-c));
+                let r = area / s;
+
+                // Đường đứt nét tới 3 đường
+                ctx.lineWidth = 2; ctx.strokeStyle = '#e11d48'; ctx.setLineDash([5, 5]);
+                // Xuống đáy BC
+                ctx.beginPath(); ctx.moveTo(incenter.x, incenter.y); ctx.lineTo(incenter.x, farmB.y); ctx.stroke();
+                
+                // Đường tròn nội tiếp
+                ctx.beginPath(); ctx.arc(incenter.x, incenter.y, r, 0, Math.PI * 2);
+                ctx.strokeStyle = '#f43f5e'; ctx.lineWidth = 3; ctx.stroke(); ctx.setLineDash([]);
+                
+                drawTower(incenter.x, incenter.y);
+            }
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if(isLevel3Solved) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const clickY = (e.clientY - rect.top) * scaleY;
+
+            const d = dist(clickX, clickY, incenter.x, incenter.y);
+
+            if(d < 35) { // Sai số cho phép click
+                isLevel3Solved = true;
+                drawFarm();
+                showModal('success', 'Xuất sắc!', 'Bạn đã chọn đúng GIAO ĐIỂM 3 ĐƯỜNG PHÂN GIÁC. Vị trí này hoàn toàn cách đều 3 con đường.');
+                const finishBtn = document.getElementById('btn-finish');
+                finishBtn.classList.remove('btn-disabled');
+                finishBtn.disabled = false;
+                finishBtn.classList.add('animate-bounce');
+            } else {
+                showModal('info', 'Lệch rồi!', 'Trạm xây ở đây không cách đều 3 đường.<br>Hãy nhớ tính chất: Tâm đường tròn nội tiếp.');
+            }
+        });
+
+        document.getElementById('btn-finish').addEventListener('click', () => goToStation(4));
+
+        window.onload = () => {
+            updateProgressUI(1);
+        };
+    </script>
+</body>
+</html>
